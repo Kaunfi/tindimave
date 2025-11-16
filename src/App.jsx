@@ -209,7 +209,9 @@ export default function App() {
             }`}
           >
             <NihrLogo className={isSidebarCollapsed ? "h-12 w-12" : "h-16 w-16"} />
-            {!isSidebarCollapsed && <span className="text-2xl font-semibold tracking-tight text-blue-100">Nihr</span>}
+            {!isSidebarCollapsed && (
+              <span className="text-2xl font-semibold tracking-tight text-blue-100">Tindimave</span>
+            )}
           </button>
         </div>
 
@@ -253,12 +255,6 @@ export default function App() {
             <div>
               <p className="text-xs uppercase tracking-widest text-blue-400/70">{activeTab === "app" ? "Dashboard" : "Insights"}</p>
             </div>
-            <button
-              type="button"
-              className="rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2 text-sm font-semibold text-blue-50 shadow-lg shadow-cyan-500/20 transition hover:from-cyan-400 hover:to-blue-500"
-            >
-              Connect Wallet
-            </button>
           </div>
         </header>
 
