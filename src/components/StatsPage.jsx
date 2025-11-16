@@ -242,7 +242,7 @@ export default function StatsPage({ history = [] }) {
     <div className="space-y-6">
       <div className="grid gap-6 lg:grid-cols-2">
         <ChartPlaceholder
-          title="Nihr TVL"
+          title="Balance"
           subtitle="Daily evolution"
           description="TVL data will be available soon."
         />

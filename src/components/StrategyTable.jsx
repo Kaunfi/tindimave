@@ -62,7 +62,7 @@ export default function StrategyTable({ data, strategy }) {
 
   return (
     <TableShell
-      title="Nihr Strategy"
+      title="Tindimave Strategy"
       rightExtra={
         <div className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 drop-shadow-[0_0_6px_rgba(56,189,248,0.5)]">
           {best ? formatPercent(best.apy) : "—"}
