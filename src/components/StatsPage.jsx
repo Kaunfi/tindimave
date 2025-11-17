@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import TableShell from "./TableShell.jsx";
 
 const SESSION_SCHEDULE_UTC = [
@@ -147,6 +147,7 @@ function BalanceTimelineChart({ series, error }) {
 function DailyAverageChart({ history }) {
   const series = useMemo(() => buildDailyAverageSeries(history), [history]);
   const hasSeries = series.length > 0;
+  const [hoveredPoint, setHoveredPoint] = useState(null);
 
   const apyValues = series.map((point) => point.apy);
   const minApy = Math.min(0, ...apyValues);
@@ -196,9 +197,32 @@ function DailyAverageChart({ history }) {
               </defs>
               <path d={pathD} fill="none" stroke="url(#daily-avg-line)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
               {points.map((point) => (
-                <circle key={point.key} cx={point.x} cy={point.y} r={5} fill="#22d3ee" stroke="#0f172a" strokeWidth="2" />
+                <circle
+                  key={point.key}
+                  cx={point.x}
+                  cy={point.y}
+                  r={5}
+                  fill="#22d3ee"
+                  stroke="#0f172a"
+                  strokeWidth="2"
+                  className="cursor-pointer"
+                  onMouseEnter={() => setHoveredPoint(point)}
+                  onMouseLeave={() => setHoveredPoint(null)}
+                />
               ))}
             </svg>
+            {hoveredPoint && (
+              <div
+                className="pointer-events-none absolute -translate-x-1/2 -translate-y-full rounded-lg border border-cyan-400/40 bg-slate-900/90 px-3 py-2 text-xs text-blue-100 shadow-lg backdrop-blur"
+                style={{
+                  left: `${(hoveredPoint.x / viewWidth) * 100}%`,
+                  top: `${(hoveredPoint.y / viewHeight) * 100}%`,
+                }}
+              >
+                <div className="font-semibold text-cyan-200">{formatPercent(hoveredPoint.apy)}</div>
+                <div className="text-[11px] text-blue-200/80">{formatDayLabel(hoveredPoint.date)}</div>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-2 text-xs text-blue-200">
               {points.map((point) => (
                 <div key={point.key} className="flex items-center justify-between rounded-lg border border-blue-800/70 bg-[#0d1832] px-3 py-2">
