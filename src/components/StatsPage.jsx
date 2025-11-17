@@ -1,53 +1,21 @@
-import React, { useId, useMemo } from "react";
+import React, { useMemo } from "react";
 import TableShell from "./TableShell.jsx";
-
-function ChartPlaceholder({ title, subtitle, description }) {
-  const gradientId = useId().replace(/:/g, "-");
-
-  return (
-    <div className="flex h-full flex-col rounded-2xl border border-blue-900 bg-[#0b1120] p-6 shadow-[0_20px_45px_rgba(15,36,84,0.35)]">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs uppercase tracking-wider text-blue-400/80">{subtitle}</p>
-          <h3 className="mt-2 text-xl font-semibold text-blue-50">{title}</h3>
-        </div>
-        <span className="rounded-full border border-blue-800/70 bg-[#0f1f3b] px-3 py-1 text-[11px] uppercase tracking-wide text-blue-200">
-          Data coming soon
-        </span>
-      </div>
-      <div className="relative mt-6 flex-1 overflow-hidden rounded-xl border border-blue-800/70 bg-[#081324] min-h-[18rem]">
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(0deg,rgba(15,36,84,0.35)_1px,transparent_1px)] bg-[length:100%_32px]" />
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(15,36,84,0.35)_1px,transparent_1px)] bg-[length:32px_100%]" />
-        <div className="pointer-events-none absolute inset-0 opacity-60 bg-[radial-gradient(circle_at_bottom,rgba(34,197,247,0.35),transparent_70%)]" />
-        <div className="relative z-10 flex h-full w-full flex-col items-center justify-center gap-4 px-6 text-center text-sm text-blue-200">
-          <svg viewBox="0 0 400 160" className="h-32 w-full text-cyan-400/70">
-            <defs>
-              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="rgba(56,189,248,0.6)" />
-                <stop offset="100%" stopColor="rgba(15,23,42,0.05)" />
-              </linearGradient>
-            </defs>
-            <path
-              d="M0 140 L45 120 L90 128 L135 96 L180 112 L225 72 L270 88 L315 52 L360 68 L400 40"
-              fill="none"
-              stroke={`url(#${gradientId})`}
-              strokeWidth="6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          <p className="text-blue-200/80">{description}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 const SESSION_SCHEDULE_UTC = [
   { hours: 0, minutes: 10 },
   { hours: 8, minutes: 10 },
   { hours: 16, minutes: 10 },
 ];
+
+function formatCurrency(value) {
+  if (!Number.isFinite(value)) return "—";
+  return value.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
 
 function getStrategyApy(entry) {
   const strategyApy = entry?.strategy?.apy;
@@ -87,6 +55,93 @@ function buildDailyAverageSeries(history) {
 
 function formatDayLabel(date) {
   return new Intl.DateTimeFormat(undefined, { day: "2-digit", month: "short" }).format(date);
+}
+
+function BalanceTimelineChart({ series, error }) {
+  const hasSeries = series.length > 0;
+  const balances = series.map((point) => point.balance);
+  const minBalance = Math.min(...balances, 0);
+  const maxBalance = Math.max(...balances, 0);
+  const range = maxBalance - minBalance || 1;
+  const viewWidth = 520;
+  const viewHeight = 240;
+  const paddingX = 32;
+  const paddingY = 24;
+
+  const points = series.map((point, index) => {
+    const x =
+      series.length === 1
+        ? viewWidth / 2
+        : paddingX + (index / (series.length - 1)) * (viewWidth - paddingX * 2);
+    const normalizedY = (point.balance - minBalance) / range;
+    const y = viewHeight - paddingY - normalizedY * (viewHeight - paddingY * 2);
+    return { ...point, x, y };
+  });
+
+  const pathD = points
+    .map((point, index) => `${index === 0 ? "M" : "L"}${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
+    .join(" ");
+
+  return (
+    <div className="flex h-full flex-col rounded-2xl border border-blue-900 bg-[#0b1120] p-6 shadow-[0_20px_45px_rgba(15,36,84,0.35)]">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs uppercase tracking-wider text-blue-400/80">Daily evolution</p>
+          <h3 className="mt-2 text-xl font-semibold text-blue-50">Balance</h3>
+          {error && <p className="mt-1 text-xs text-amber-300/90">{error}</p>}
+        </div>
+      </div>
+
+      <div className="relative mt-6 flex-1 overflow-hidden rounded-xl border border-blue-800/70 bg-[#081324] min-h-[18rem]">
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(0deg,rgba(15,36,84,0.35)_1px,transparent_1px)] bg-[length:100%_32px]" />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(15,36,84,0.35)_1px,transparent_1px)] bg-[length:32px_100%]" />
+        <div className="pointer-events-none absolute inset-0 opacity-60 bg-[radial-gradient(circle_at_bottom,rgba(34,197,247,0.35),transparent_70%)]" />
+
+        {hasSeries ? (
+          <div className="relative z-10 flex h-full flex-col justify-between p-4">
+            <svg viewBox={`0 0 ${viewWidth} ${viewHeight}`} className="h-48 w-full text-cyan-400">
+              <defs>
+                <linearGradient id="balance-area" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="rgba(56,189,248,0.25)" />
+                  <stop offset="100%" stopColor="rgba(56,189,248,0.03)" />
+                </linearGradient>
+                <linearGradient id="balance-line" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="rgba(56,189,248,1)" />
+                  <stop offset="100%" stopColor="rgba(14,165,233,0.6)" />
+                </linearGradient>
+              </defs>
+              <path
+                d={`${pathD} L ${viewWidth - paddingX} ${viewHeight - paddingY} L ${paddingX} ${viewHeight - paddingY} Z`}
+                fill="url(#balance-area)"
+                opacity="0.35"
+              />
+              <path d={pathD} fill="none" stroke="url(#balance-line)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+              {points.map((point) => (
+                <g key={point.key}>
+                  <circle cx={point.x} cy={point.y} r={5} fill="#22d3ee" stroke="#0f172a" strokeWidth="2" />
+                  <text x={point.x} y={point.y - 12} textAnchor="middle" fontSize="10" fill="#e0f2fe">
+                    {formatCurrency(point.balance)}
+                  </text>
+                </g>
+              ))}
+            </svg>
+            <div className="grid grid-cols-2 gap-2 text-xs text-blue-200">
+              {points.map((point) => (
+                <div key={point.key} className="flex items-center justify-between rounded-lg border border-blue-800/70 bg-[#0d1832] px-3 py-2">
+                  <span className="font-medium text-blue-100">{formatDayLabel(point.date)}</span>
+                  <span className="text-cyan-200">{formatCurrency(point.balance)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="relative z-10 flex h-full items-center justify-center px-6 text-center text-sm text-blue-200">
+            <p className="text-blue-200/80">Balance history will appear once the sub-account has reported at least one day of activity.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function DailyAverageChart({ history }) {
@@ -235,17 +290,23 @@ function getSessionWindow(value) {
   return { start, end };
 }
 
-export default function StatsPage({ history = [] }) {
+export default function StatsPage({ history = [], balanceHistory = [], balanceError = null }) {
   const hasHistory = Array.isArray(history) && history.length > 0;
+  const balanceSeries = useMemo(() => {
+    return balanceHistory
+      .filter((entry) => Number.isFinite(entry?.balance))
+      .map((entry) => ({
+        ...entry,
+        date: entry.date instanceof Date ? entry.date : new Date(entry.date),
+      }))
+      .filter((entry) => !Number.isNaN(entry.date.getTime()))
+      .sort((a, b) => a.date - b.date);
+  }, [balanceHistory]);
 
   return (
     <div className="space-y-6">
       <div className="grid gap-6 lg:grid-cols-2">
-        <ChartPlaceholder
-          title="Balance"
-          subtitle="Daily evolution"
-          description="TVL data will be available soon."
-        />
+        <BalanceTimelineChart series={balanceSeries} error={balanceError} />
         <DailyAverageChart history={history} />
       </div>
 

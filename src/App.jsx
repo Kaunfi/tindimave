@@ -5,6 +5,7 @@ import StrategyActionPanel from "./components/StrategyActionPanel.jsx";
 import FundingTable from "./components/FundingTable.jsx";
 import StatsPage from "./components/StatsPage.jsx";
 import { useFundingData } from "./hooks/useFundingData.js";
+import { useSubaccountMetrics } from "./hooks/useSubaccountMetrics.js";
 import { useSpotData } from "./components/SpotTable.jsx";
 import { aggregateFundingStats, aggregateSpotStats } from "./utils/stats.js";
 import { selectBestStrategy } from "./utils/strategy.js";
@@ -97,6 +98,7 @@ export default function App() {
   const [history, setHistory] = useState(() => loadHistoryFromStorage());
   const fundingData = useFundingData();
   const spotData = useSpotData();
+  const subaccountMetrics = useSubaccountMetrics();
 
   const bestStrategy = useMemo(
     () => selectBestStrategy(fundingData?.rows ?? []),
@@ -265,13 +267,21 @@ export default function App() {
                 <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.85fr)]">
                   <StrategyTable data={fundingData} strategy={bestStrategy} />
                   <div className="w-full xl:sticky xl:top-6">
-                    <StrategyActionPanel strategy={bestStrategy} />
+                    <StrategyActionPanel
+                      balance={subaccountMetrics.balance}
+                      fundingEarned={subaccountMetrics.fundingEarnings}
+                      isLoading={subaccountMetrics.loading}
+                    />
                   </div>
                 </div>
                 <FundingTable data={fundingData} />
               </div>
             ) : (
-              <StatsPage history={history} />
+              <StatsPage
+                history={history}
+                balanceHistory={subaccountMetrics.balanceHistory}
+                balanceError={subaccountMetrics.error}
+              />
             )}
           </div>
         </main>
