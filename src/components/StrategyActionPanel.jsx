@@ -11,10 +11,12 @@ function formatCurrency(value) {
 }
 
 export default function StrategyActionPanel({ balance, fundingEarned, isLoading }) {
-  const balanceLabel = isLoading ? "Loading…" : formatCurrency(balance ?? 0);
+  const balanceLabel = isLoading ? "Loading…" : formatCurrency(balance);
   const fundingLabel = isLoading
     ? "Loading…"
-    : `${Number.isFinite(fundingEarned) && fundingEarned > 0 ? "+" : ""}${formatCurrency(fundingEarned ?? 0)}`;
+    : Number.isFinite(fundingEarned)
+      ? `${fundingEarned > 0 ? "+" : ""}${formatCurrency(fundingEarned)}`
+      : "—";
 
   return (
     <div className="rounded-2xl border border-blue-900 bg-gradient-to-br from-[#0a142c] via-[#0c1a38] to-[#081021] shadow-[0_20px_45px_rgba(15,36,84,0.45)]">
