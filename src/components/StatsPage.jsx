@@ -187,7 +187,7 @@ function DailyAverageChart({ history }) {
         <div className="pointer-events-none absolute inset-0 opacity-60 bg-[radial-gradient(circle_at_bottom,rgba(34,197,247,0.35),transparent_70%)]" />
 
         {hasSeries ? (
-          <div className="relative z-10 flex h-full flex-col justify-between p-4">
+          <div className="relative z-10 flex h-full flex-col p-4">
             <svg viewBox={`0 0 ${viewWidth} ${viewHeight}`} className="h-48 w-full text-cyan-400">
               <defs>
                 <linearGradient id="daily-avg-line" x1="0" y1="0" x2="0" y2="1">
@@ -223,14 +223,6 @@ function DailyAverageChart({ history }) {
                 <div className="text-[11px] text-blue-200/80">{formatDayLabel(hoveredPoint.date)}</div>
               </div>
             )}
-            <div className="grid grid-cols-2 gap-2 text-xs text-blue-200">
-              {points.map((point) => (
-                <div key={point.key} className="flex items-center justify-between rounded-lg border border-blue-800/70 bg-[#0d1832] px-3 py-2">
-                  <span className="font-medium text-blue-100">{formatDayLabel(point.date)}</span>
-                  <span className="text-cyan-200">{formatPercent(point.apy)}</span>
-                </div>
-              ))}
-            </div>
           </div>
         ) : (
           <div className="relative z-10 flex h-full items-center justify-center px-6 text-center text-sm text-blue-200">
