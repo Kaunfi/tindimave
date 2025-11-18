@@ -1,11 +1,4 @@
 import React, { useMemo, useState } from "react";
-import TableShell from "./TableShell.jsx";
-
-const SESSION_SCHEDULE_UTC = [
-  { hours: 0, minutes: 10 },
-  { hours: 8, minutes: 10 },
-  { hours: 16, minutes: 10 },
-];
 
 function formatCurrency(value) {
   if (!Number.isFinite(value)) return "—";
@@ -312,80 +305,12 @@ function DailyAverageChart({ history }) {
     </div>
   );
 }
-function formatTimestamp(value) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
-
 function formatPercent(value, multiplier = 1, fractionDigits = 2) {
   if (!Number.isFinite(value)) return "—";
   return `${(value * multiplier).toFixed(fractionDigits)}%`;
 }
 
-function getSessionWindow(value) {
-  const reference = new Date(value);
-  if (Number.isNaN(reference.getTime())) {
-    return { start: null, end: null };
-  }
-
-  let end = null;
-  let endScheduleIndex = -1;
-
-  for (let i = SESSION_SCHEDULE_UTC.length - 1; i >= 0; i -= 1) {
-    const { hours, minutes } = SESSION_SCHEDULE_UTC[i];
-    const candidate = new Date(
-      Date.UTC(
-        reference.getUTCFullYear(),
-        reference.getUTCMonth(),
-        reference.getUTCDate(),
-        hours,
-        minutes,
-        0,
-        0
-      )
-    );
-
-    if (candidate <= reference) {
-      end = candidate;
-      endScheduleIndex = i;
-      break;
-    }
-  }
-
-  if (!end) {
-    const { hours, minutes } = SESSION_SCHEDULE_UTC[SESSION_SCHEDULE_UTC.length - 1];
-    end = new Date(
-      Date.UTC(
-        reference.getUTCFullYear(),
-        reference.getUTCMonth(),
-        reference.getUTCDate() - 1,
-        hours,
-        minutes,
-        0,
-        0
-      )
-    );
-    endScheduleIndex = SESSION_SCHEDULE_UTC.length - 1;
-  }
-
-  const startIndex = (endScheduleIndex - 1 + SESSION_SCHEDULE_UTC.length) % SESSION_SCHEDULE_UTC.length;
-  const start = new Date(end.getTime());
-  const { hours: startHours, minutes: startMinutes } = SESSION_SCHEDULE_UTC[startIndex];
-  start.setUTCHours(startHours, startMinutes, 0, 0);
-
-  if (start >= end) {
-    start.setUTCDate(start.getUTCDate() - 1);
-  }
-
-  return { start, end };
-}
-
 export default function StatsPage({ history = [], balanceHistory = [], balanceError = null }) {
-  const hasHistory = Array.isArray(history) && history.length > 0;
   const balanceSeries = useMemo(() => {
     return balanceHistory
       .filter((entry) => Number.isFinite(entry?.balance))
@@ -403,51 +328,6 @@ export default function StatsPage({ history = [], balanceHistory = [], balanceEr
         <BalanceTimelineChart series={balanceSeries} error={balanceError} />
         <DailyAverageChart history={history} />
       </div>
-
-      <TableShell
-        title="Session history"
-        footerRight={
-          hasHistory
-            ? `Showing ${history.length} entr${history.length === 1 ? "y" : "ies"} stored locally`
-            : null
-        }
-      >
-        <table className="min-w-full text-sm text-blue-50">
-          <thead className="bg-[#111a2e] text-xs uppercase tracking-wider text-blue-200">
-            <tr>
-              <th className="px-4 py-3 text-left">Date &amp; heure de début</th>
-              <th className="px-4 py-3 text-left">Date &amp; heure de fin</th>
-              <th className="px-4 py-3 text-left">Average APY</th>
-            </tr>
-          </thead>
-          <tbody>
-            {hasHistory ? (
-              history.map((entry) => {
-                const { timestamp, funding = {} } = entry || {};
-                const { start, end } = getSessionWindow(timestamp);
-                const strategyApy = getStrategyApy(entry);
-                return (
-                  <tr key={timestamp} className="border-t border-blue-900 hover:bg-[#15213a]">
-                    <td className="px-4 py-3 whitespace-nowrap text-blue-100">
-                      {formatTimestamp(start)}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-blue-100">
-                      {formatTimestamp(end)}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">{formatPercent(strategyApy)}</td>
-                  </tr>
-                );
-              })
-            ) : (
-              <tr>
-                <td className="px-4 py-4 text-center text-blue-200" colSpan={3}>
-                  No sessions recorded yet. Run the dashboard to capture session data.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </TableShell>
     </div>
   );
 }
