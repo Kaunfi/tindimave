@@ -29,7 +29,8 @@ const StatsIcon = ({ className = "h-5 w-5" }) => (
   </svg>
 );
 
-const HISTORY_STORAGE_KEY = "nihr.sessionHistory";
+const HISTORY_STORAGE_KEY = "nihr.sessionHistory.v2";
+const LEGACY_HISTORY_KEYS = ["nihr.sessionHistory"];
 const MAX_HISTORY_ENTRIES = 180;
 const NAV_ITEMS = [
   { key: "app", label: "App", icon: DashboardIcon },
@@ -48,6 +49,12 @@ function resolveTabFromLocation() {
 function loadHistoryFromStorage() {
   if (typeof window === "undefined") return [];
   try {
+    LEGACY_HISTORY_KEYS.forEach((legacyKey) => {
+      if (legacyKey !== HISTORY_STORAGE_KEY) {
+        window.localStorage.removeItem(legacyKey);
+      }
+    });
+
     const raw = window.localStorage.getItem(HISTORY_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);

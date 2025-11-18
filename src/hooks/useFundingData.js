@@ -244,11 +244,12 @@ export function useFundingData() {
         const scheduledAt = getLastScheduledUpdate(new Date());
         const lastRecorded = lastUpdateRef.current;
         const isNewSchedule = !lastRecorded || scheduledAt.getTime() !== lastRecorded.getTime();
-        const shouldUpdate = isNewSchedule || lastUpdateHadError.current || !hasRowsRef.current;
+        const shouldUpdateSchedule = isNewSchedule || lastUpdateHadError.current || !hasRowsRef.current;
 
-        if (shouldUpdate) {
-          setRows(mapped);
-          hasRowsRef.current = true;
+        setRows(mapped);
+        hasRowsRef.current = true;
+
+        if (shouldUpdateSchedule) {
           setUpdatedAt(scheduledAt);
           lastUpdateRef.current = scheduledAt;
           lastUpdateHadError.current = false;
