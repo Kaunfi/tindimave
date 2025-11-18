@@ -125,14 +125,6 @@ function BalanceTimelineChart({ series, error }) {
                 </g>
               ))}
             </svg>
-            <div className="grid grid-cols-2 gap-2 text-xs text-blue-200">
-              {points.map((point) => (
-                <div key={point.key} className="flex items-center justify-between rounded-lg border border-blue-800/70 bg-[#0d1832] px-3 py-2">
-                  <span className="font-medium text-blue-100">{formatDayLabel(point.date)}</span>
-                  <span className="text-cyan-200">{formatCurrency(point.balance)}</span>
-                </div>
-              ))}
-            </div>
           </div>
         ) : (
           <div className="relative z-10 flex h-full items-center justify-center px-6 text-center text-sm text-blue-200">
