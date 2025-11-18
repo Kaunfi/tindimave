@@ -217,10 +217,10 @@ function DailyAverageChart({ history }) {
         </div>
       </div>
 
-      <div className="relative mt-6 flex-1 overflow-hidden rounded-xl border border-blue-800/70 bg-[#081324]">
+      <div className="relative mt-6 flex-1 overflow-hidden rounded-xl border border-blue-800/70 bg-[#081324] min-h-[18rem]">
         {hasSeries ? (
           <div className="relative z-10 flex h-full flex-col p-4">
-            <svg viewBox={`0 0 ${viewWidth} ${viewHeight}`} className="h-48 w-full text-cyan-400">
+            <svg viewBox={`0 0 ${viewWidth} ${viewHeight}`} className="h-full w-full flex-1 text-cyan-400">
               <defs>
                 <linearGradient id="daily-avg-line" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="rgba(56,189,248,0.9)" />
