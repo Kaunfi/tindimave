@@ -65,8 +65,8 @@ function BalanceTimelineChart({ series, error }) {
   const range = maxBalance - minBalance || 1;
   const viewWidth = 520;
   const viewHeight = 240;
-  const paddingX = 32;
-  const paddingY = 24;
+  const paddingX = 40;
+  const paddingY = 28;
 
   const points = series.map((point, index) => {
     const x =
@@ -82,6 +82,11 @@ function BalanceTimelineChart({ series, error }) {
     .map((point, index) => `${index === 0 ? "M" : "L"}${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
     .join(" ");
 
+  const yTicks = 5;
+  const yTickValues = Array.from({ length: yTicks }, (_, i) => minBalance + (i / (yTicks - 1)) * range);
+  const xTickStep = Math.max(1, Math.ceil(points.length / 5));
+  const xTickPoints = points.filter((_, index) => index % xTickStep === 0 || index === points.length - 1);
+
   return (
     <div className="flex h-full flex-col rounded-2xl border border-blue-900 bg-[#0b1120] p-6 shadow-[0_20px_45px_rgba(15,36,84,0.35)]">
       <div className="flex items-start justify-between gap-4">
@@ -93,28 +98,62 @@ function BalanceTimelineChart({ series, error }) {
       </div>
 
       <div className="relative mt-6 flex-1 overflow-hidden rounded-xl border border-blue-800/70 bg-[#081324] min-h-[18rem]">
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(0deg,rgba(15,36,84,0.35)_1px,transparent_1px)] bg-[length:100%_32px]" />
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(15,36,84,0.35)_1px,transparent_1px)] bg-[length:32px_100%]" />
-        <div className="pointer-events-none absolute inset-0 opacity-60 bg-[radial-gradient(circle_at_bottom,rgba(34,197,247,0.35),transparent_70%)]" />
-
         {hasSeries ? (
           <div className="relative z-10 flex h-full flex-col justify-between p-4">
             <svg viewBox={`0 0 ${viewWidth} ${viewHeight}`} className="h-48 w-full text-cyan-400">
               <defs>
-                <linearGradient id="balance-area" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="rgba(56,189,248,0.25)" />
-                  <stop offset="100%" stopColor="rgba(56,189,248,0.03)" />
-                </linearGradient>
                 <linearGradient id="balance-line" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="rgba(56,189,248,1)" />
                   <stop offset="100%" stopColor="rgba(14,165,233,0.6)" />
                 </linearGradient>
               </defs>
-              <path
-                d={`${pathD} L ${viewWidth - paddingX} ${viewHeight - paddingY} L ${paddingX} ${viewHeight - paddingY} Z`}
-                fill="url(#balance-area)"
-                opacity="0.35"
+
+              <line
+                x1={paddingX}
+                y1={paddingY}
+                x2={paddingX}
+                y2={viewHeight - paddingY}
+                stroke="#1e293b"
+                strokeWidth="1"
               />
+              <line
+                x1={paddingX}
+                y1={viewHeight - paddingY}
+                x2={viewWidth - paddingX}
+                y2={viewHeight - paddingY}
+                stroke="#1e293b"
+                strokeWidth="1"
+              />
+
+              {yTickValues.map((value) => {
+                const normalized = (value - minBalance) / range;
+                const y = viewHeight - paddingY - normalized * (viewHeight - paddingY * 2);
+                return (
+                  <g key={value}>
+                    <line x1={paddingX - 6} x2={paddingX} y1={y} y2={y} stroke="#1e293b" strokeWidth="1" />
+                    <text x={paddingX - 10} y={y + 4} textAnchor="end" fontSize="10" fill="#cbd5e1">
+                      {formatCurrency(value)}
+                    </text>
+                  </g>
+                );
+              })}
+
+              {xTickPoints.map((point) => (
+                <g key={point.key}>
+                  <line
+                    x1={point.x}
+                    x2={point.x}
+                    y1={viewHeight - paddingY}
+                    y2={viewHeight - paddingY + 6}
+                    stroke="#1e293b"
+                    strokeWidth="1"
+                  />
+                  <text x={point.x} y={viewHeight - paddingY + 18} textAnchor="middle" fontSize="10" fill="#cbd5e1">
+                    {formatDayLabel(point.date)}
+                  </text>
+                </g>
+              ))}
+
               <path d={pathD} fill="none" stroke="url(#balance-line)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
               {points.map((point) => (
                 <g key={point.key}>
@@ -147,8 +186,8 @@ function DailyAverageChart({ history }) {
   const range = maxApy - minApy || 1;
   const viewWidth = 520;
   const viewHeight = 240;
-  const paddingX = 32;
-  const paddingY = 24;
+  const paddingX = 40;
+  const paddingY = 28;
 
   const points = series.map((point, index) => {
     const x =
@@ -164,6 +203,11 @@ function DailyAverageChart({ history }) {
     .map((point, index) => `${index === 0 ? "M" : "L"}${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
     .join(" ");
 
+  const yTicks = 5;
+  const yTickValues = Array.from({ length: yTicks }, (_, i) => minApy + (i / (yTicks - 1)) * range);
+  const xTickStep = Math.max(1, Math.ceil(points.length / 5));
+  const xTickPoints = points.filter((_, index) => index % xTickStep === 0 || index === points.length - 1);
+
   return (
     <div className="flex h-full flex-col rounded-2xl border border-blue-900 bg-[#0b1120] p-6 shadow-[0_20px_45px_rgba(15,36,84,0.35)]">
       <div className="flex items-start justify-between gap-4">
@@ -174,10 +218,6 @@ function DailyAverageChart({ history }) {
       </div>
 
       <div className="relative mt-6 flex-1 overflow-hidden rounded-xl border border-blue-800/70 bg-[#081324]">
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(0deg,rgba(15,36,84,0.35)_1px,transparent_1px)] bg-[length:100%_32px]" />
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(15,36,84,0.35)_1px,transparent_1px)] bg-[length:32px_100%]" />
-        <div className="pointer-events-none absolute inset-0 opacity-60 bg-[radial-gradient(circle_at_bottom,rgba(34,197,247,0.35),transparent_70%)]" />
-
         {hasSeries ? (
           <div className="relative z-10 flex h-full flex-col p-4">
             <svg viewBox={`0 0 ${viewWidth} ${viewHeight}`} className="h-48 w-full text-cyan-400">
@@ -187,6 +227,53 @@ function DailyAverageChart({ history }) {
                   <stop offset="100%" stopColor="rgba(14,165,233,0.3)" />
                 </linearGradient>
               </defs>
+
+              <line
+                x1={paddingX}
+                y1={paddingY}
+                x2={paddingX}
+                y2={viewHeight - paddingY}
+                stroke="#1e293b"
+                strokeWidth="1"
+              />
+              <line
+                x1={paddingX}
+                y1={viewHeight - paddingY}
+                x2={viewWidth - paddingX}
+                y2={viewHeight - paddingY}
+                stroke="#1e293b"
+                strokeWidth="1"
+              />
+
+              {yTickValues.map((value) => {
+                const normalized = (value - minApy) / range;
+                const y = viewHeight - paddingY - normalized * (viewHeight - paddingY * 2);
+                return (
+                  <g key={value}>
+                    <line x1={paddingX - 6} x2={paddingX} y1={y} y2={y} stroke="#1e293b" strokeWidth="1" />
+                    <text x={paddingX - 10} y={y + 4} textAnchor="end" fontSize="10" fill="#cbd5e1">
+                      {formatPercent(value)}
+                    </text>
+                  </g>
+                );
+              })}
+
+              {xTickPoints.map((point) => (
+                <g key={point.key}>
+                  <line
+                    x1={point.x}
+                    x2={point.x}
+                    y1={viewHeight - paddingY}
+                    y2={viewHeight - paddingY + 6}
+                    stroke="#1e293b"
+                    strokeWidth="1"
+                  />
+                  <text x={point.x} y={viewHeight - paddingY + 18} textAnchor="middle" fontSize="10" fill="#cbd5e1">
+                    {formatDayLabel(point.date)}
+                  </text>
+                </g>
+              ))}
+
               <path d={pathD} fill="none" stroke="url(#daily-avg-line)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
               {points.map((point) => (
                 <circle
@@ -225,7 +312,6 @@ function DailyAverageChart({ history }) {
     </div>
   );
 }
-
 function formatTimestamp(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
