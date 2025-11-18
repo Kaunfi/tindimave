@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import TableShell from "./TableShell.jsx";
 
 const SESSION_SCHEDULE_UTC = [
@@ -57,33 +57,13 @@ function formatDayLabel(date) {
   return new Intl.DateTimeFormat(undefined, { day: "2-digit", month: "short" }).format(date);
 }
 
-function useResponsiveChartWidth(defaultWidth = 520) {
-  const containerRef = useRef(null);
-  const [width, setWidth] = useState(defaultWidth);
-
-  useEffect(() => {
-    const updateWidth = () => {
-      const nextWidth = containerRef.current?.clientWidth;
-      if (nextWidth) {
-        setWidth(Math.max(nextWidth, defaultWidth));
-      }
-    };
-
-    updateWidth();
-    window.addEventListener("resize", updateWidth);
-    return () => window.removeEventListener("resize", updateWidth);
-  }, [defaultWidth]);
-
-  return [containerRef, width];
-}
-
 function BalanceTimelineChart({ series, error }) {
-  const [chartRef, viewWidth] = useResponsiveChartWidth();
   const hasSeries = series.length > 0;
   const balances = series.map((point) => point.balance);
   const minBalance = Math.min(...balances, 0);
   const maxBalance = Math.max(...balances, 0);
   const range = maxBalance - minBalance || 1;
+  const viewWidth = 520;
   const viewHeight = 240;
   const paddingX = 40;
   const paddingY = 28;
@@ -108,10 +88,7 @@ function BalanceTimelineChart({ series, error }) {
   const xTickPoints = points.filter((_, index) => index % xTickStep === 0 || index === points.length - 1);
 
   return (
-    <div
-      ref={chartRef}
-      className="flex h-full flex-col rounded-2xl border border-blue-900 bg-[#0b1120] p-6 shadow-[0_20px_45px_rgba(15,36,84,0.35)]"
-    >
+    <div className="flex h-full flex-col rounded-2xl border border-blue-900 bg-[#0b1120] p-6 shadow-[0_20px_45px_rgba(15,36,84,0.35)]">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-wider text-blue-400/80">Daily evolution</p>
@@ -199,7 +176,6 @@ function BalanceTimelineChart({ series, error }) {
 }
 
 function DailyAverageChart({ history }) {
-  const [chartRef, viewWidth] = useResponsiveChartWidth();
   const series = useMemo(() => buildDailyAverageSeries(history), [history]);
   const hasSeries = series.length > 0;
   const [hoveredPoint, setHoveredPoint] = useState(null);
@@ -208,6 +184,7 @@ function DailyAverageChart({ history }) {
   const minApy = Math.min(0, ...apyValues);
   const maxApy = Math.max(0, ...apyValues);
   const range = maxApy - minApy || 1;
+  const viewWidth = 520;
   const viewHeight = 240;
   const paddingX = 40;
   const paddingY = 28;
@@ -232,10 +209,7 @@ function DailyAverageChart({ history }) {
   const xTickPoints = points.filter((_, index) => index % xTickStep === 0 || index === points.length - 1);
 
   return (
-    <div
-      ref={chartRef}
-      className="flex h-full flex-col rounded-2xl border border-blue-900 bg-[#0b1120] p-6 shadow-[0_20px_45px_rgba(15,36,84,0.35)]"
-    >
+    <div className="flex h-full flex-col rounded-2xl border border-blue-900 bg-[#0b1120] p-6 shadow-[0_20px_45px_rgba(15,36,84,0.35)]">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-wider text-blue-400/80">Daily average</p>
