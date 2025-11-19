@@ -97,6 +97,79 @@ function normalizeLeverage(base, rawLeverage) {
 
 const FALLBACK_SPOT_SET = new Set(FALLBACK_ROWS.map((row) => row.base));
 
+const FALLBACK_STORAGE_KEY = "fundingFallbackRows";
+const FALLBACK_STORAGE_TIMESTAMP_KEY = "fundingFallbackRowsUpdatedAt";
+const FALLBACK_STORAGE_TTL_MS = 10 * 60 * 1000;
+
+function createSpotSet(rows = []) {
+  return new Set(rows.map((row) => row?.base).filter(Boolean));
+}
+
+function persistFallbackRows(rows) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(FALLBACK_STORAGE_KEY, JSON.stringify(rows));
+    window.localStorage.setItem(FALLBACK_STORAGE_TIMESTAMP_KEY, String(Date.now()));
+  } catch (e) {
+    console.error("Unable to persist fallback rows", e);
+  }
+}
+
+function clearStoredFallbackRows() {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(FALLBACK_STORAGE_KEY);
+    window.localStorage.removeItem(FALLBACK_STORAGE_TIMESTAMP_KEY);
+  } catch (e) {
+    console.error("Unable to clear stored fallback rows", e);
+  }
+}
+
+function loadStoredFallbackRows() {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(FALLBACK_STORAGE_KEY);
+    const timestampRaw = window.localStorage.getItem(FALLBACK_STORAGE_TIMESTAMP_KEY);
+    if (!raw || !timestampRaw) return null;
+    const timestamp = Number(timestampRaw);
+    if (!Number.isFinite(timestamp)) {
+      clearStoredFallbackRows();
+      return null;
+    }
+    if (Date.now() - timestamp > FALLBACK_STORAGE_TTL_MS) {
+      clearStoredFallbackRows();
+      return null;
+    }
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length === 0) return null;
+    const normalizedRows = parsed
+      .map((row) => {
+        if (!row || typeof row !== "object") return null;
+        const normalized = {
+          pair: row.pair ?? "—",
+          base: row.base ?? "",
+          markPx: Number(row.markPx) || 0,
+          funding: Number(row.funding) || 0,
+          apy: Number(row.apy) || 0,
+          hedge: row.hedge ?? "-",
+          oi: Number(row.oi) || 0,
+          vol24h: Number(row.vol24h) || 0,
+          premium: Number(row.premium) || 0,
+          oraclePx: Number(row.oraclePx) || 0,
+          prevDayPx: Number(row.prevDayPx) || 0,
+          leverage: normalizeLeverage(row.base, row.leverage),
+        };
+        return { ...normalized, score: calculateAssetScore(normalized) };
+      })
+      .filter(Boolean);
+    if (normalizedRows.length === 0) return null;
+    return { rows: normalizedRows, timestamp };
+  } catch (e) {
+    console.error("Unable to read stored fallback rows", e);
+    return null;
+  }
+}
+
 export function useFundingData() {
   const [rows, setRows] = useState([]);
   const [spotSet, setSpotSet] = useState(null);
@@ -105,6 +178,17 @@ export function useFundingData() {
   const lastUpdateRef = useRef(null);
   const lastUpdateHadError = useRef(false);
   const hasRowsRef = useRef(false);
+  const fallbackRowsRef = useRef(FALLBACK_ROWS);
+  const fallbackSpotSetRef = useRef(new Set(FALLBACK_SPOT_SET));
+  const fallbackUpdatedAtRef = useRef(null);
+
+  useEffect(() => {
+    const stored = loadStoredFallbackRows();
+    if (!stored) return;
+    fallbackRowsRef.current = stored.rows;
+    fallbackSpotSetRef.current = createSpotSet(stored.rows);
+    fallbackUpdatedAtRef.current = stored.timestamp;
+  }, []);
 
   async function fetchPerps() {
     const res = await fetch(API, {
@@ -266,6 +350,10 @@ export function useFundingData() {
         const shouldUpdateSchedule = isNewSchedule || lastUpdateHadError.current || !hasRowsRef.current;
 
         setRows(mapped);
+        fallbackRowsRef.current = mapped;
+        fallbackSpotSetRef.current = createSpotSet(mapped);
+        fallbackUpdatedAtRef.current = Date.now();
+        persistFallbackRows(mapped);
         hasRowsRef.current = true;
 
         if (shouldUpdateSchedule) {
@@ -278,8 +366,17 @@ export function useFundingData() {
       } catch (e) {
         if (!mounted) return;
         const scheduledAt = getLastScheduledUpdate(new Date());
-        setRows(FALLBACK_ROWS);
-        setSpotSet(new Set(FALLBACK_SPOT_SET));
+        const isStoredFallbackFresh =
+          typeof fallbackUpdatedAtRef.current === "number" &&
+          Date.now() - fallbackUpdatedAtRef.current <= FALLBACK_STORAGE_TTL_MS;
+        const fallbackRows =
+          isStoredFallbackFresh && fallbackRowsRef.current?.length ? fallbackRowsRef.current : FALLBACK_ROWS;
+        const fallbackSpotSet =
+          isStoredFallbackFresh && fallbackSpotSetRef.current?.size
+            ? fallbackSpotSetRef.current
+            : FALLBACK_SPOT_SET;
+        setRows(fallbackRows);
+        setSpotSet(new Set(fallbackSpotSet));
         const reason = String(e?.message || e || "unknown error");
         setError(`Unable to load live funding data (${reason}). Displaying sample data instead.`);
         setUpdatedAt(scheduledAt);
