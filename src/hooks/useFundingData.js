@@ -44,7 +44,7 @@ const FALLBACK_ROWS = [
     premium: 0.00042,
     oraclePx: 67840.15,
     prevDayPx: 66800.11,
-    leverage: "50",
+    leverage: 3,
   },
   {
     pair: "ETH-USD",
@@ -58,7 +58,7 @@ const FALLBACK_ROWS = [
     premium: -0.00031,
     oraclePx: 3529.44,
     prevDayPx: 3480.52,
-    leverage: "30",
+    leverage: 3,
   },
   {
     pair: "SOL-USD",
@@ -72,9 +72,28 @@ const FALLBACK_ROWS = [
     premium: 0.00067,
     oraclePx: 187.9,
     prevDayPx: 180.34,
-    leverage: "25",
+    leverage: 2,
   },
 ].map((row) => ({ ...row, score: calculateAssetScore(row) }));
+
+const BASE_MAX_LEVERAGE_CAPS = {
+  BTC: 3,
+  ETH: 3,
+  HYPE: 2,
+  SOL: 2,
+};
+
+function normalizeLeverage(base, rawLeverage) {
+  const numeric = Number.parseFloat(String(rawLeverage ?? "").toUpperCase().replace(/X/g, ""));
+  const normalized = Number.isFinite(numeric) && numeric > 0 ? numeric : null;
+  const key = typeof base === "string" ? base.toUpperCase() : null;
+  const cap = key ? BASE_MAX_LEVERAGE_CAPS[key] : undefined;
+  if (typeof cap === "number" && cap > 0) {
+    if (normalized === null) return cap;
+    return Math.min(normalized, cap);
+  }
+  return normalized;
+}
 
 const FALLBACK_SPOT_SET = new Set(FALLBACK_ROWS.map((row) => row.base));
 
@@ -193,7 +212,7 @@ export function useFundingData() {
         premium: Number(a.premium) || 0,
         oraclePx: Number(a.oraclePx) || 0,
         prevDayPx: Number(a.prevDayPx) || 0,
-        leverage: String(pair?.maxLeverage ?? "").replace("x", ""),
+        leverage: normalizeLeverage(base, pair?.maxLeverage),
       };
 
       return { ...normalized, score: calculateAssetScore(normalized) };
