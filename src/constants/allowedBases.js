@@ -1,4 +1,4 @@
-export const ALLOWED_BASES = ["HYPE", "BTC", "ETH", "SOL", "PUMP", "XPL"];
+export const ALLOWED_BASES = ["HYPE", "BTC", "ETH", "SOL"];
 
 export const ALLOWED_BASES_SET = new Set(ALLOWED_BASES);
 
