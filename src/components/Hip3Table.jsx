@@ -89,7 +89,7 @@ async function fetchHip3Assets() {
   const res = await fetch(API, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ type: "spotMeta" }),
+    body: JSON.stringify({ type: "meta", dex: "xyz" }),
   });
 
   if (!res.ok) {
@@ -104,8 +104,16 @@ async function fetchHip3Assets() {
     throw new Error("Invalid JSON from Hyperliquid (hip3).\n" + txt.slice(0, 300));
   }
 
-  const list = Array.isArray(data) ? data : data?.universe || [];
-  const hip3Entries = list.filter(isHip3Entry);
+  const list = Array.isArray(data) ? data : data?.universe || data?.assets || [];
+
+  const xyzEntries = list.filter((entry) => {
+    const dex = String(entry?.dex || entry?.dexName || entry?.source || "").toLowerCase();
+    if (dex === "xyz") return true;
+    const symbols = [entry?.symbol, entry?.name, entry?.ticker, entry?.token?.symbol];
+    return symbols.some((value) => typeof value === "string" && value.toLowerCase().startsWith("xyz:"));
+  });
+
+  const hip3Entries = xyzEntries.filter(isHip3Entry);
   if (hip3Entries.length === 0) {
     throw new Error("No HIP3 assets found in live response");
   }
