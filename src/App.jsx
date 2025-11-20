@@ -4,6 +4,7 @@ import StrategyTable from "./components/StrategyTable.jsx";
 import StrategyActionPanel from "./components/StrategyActionPanel.jsx";
 import FundingTable from "./components/FundingTable.jsx";
 import StatsPage from "./components/StatsPage.jsx";
+import Hip3Table from "./components/Hip3Table.jsx";
 import { useFundingData } from "./hooks/useFundingData.js";
 import { useSubaccountMetrics } from "./hooks/useSubaccountMetrics.js";
 import { useSpotData } from "./components/SpotTable.jsx";
@@ -29,12 +30,21 @@ const StatsIcon = ({ className = "h-5 w-5" }) => (
   </svg>
 );
 
+const Hip3Icon = ({ className = "h-5 w-5" }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+    <path d="M12 3.5 4.75 7.25 12 11l7.25-3.75L12 3.5Z" />
+    <path d="m4.75 12.25 7.25 3.75 7.25-3.75" />
+    <path d="M4.75 9.5v7.25L12 20.5l7.25-3.75V9.5" />
+  </svg>
+);
+
 const HISTORY_STORAGE_KEY = "nihr.sessionHistory.v2";
 const LEGACY_HISTORY_KEYS = ["nihr.sessionHistory"];
 const MAX_HISTORY_ENTRIES = 180;
 const NAV_ITEMS = [
-  { key: "app", label: "App", icon: DashboardIcon },
-  { key: "stats", label: "Stats", icon: StatsIcon },
+  { key: "app", label: "App", icon: DashboardIcon, path: "/app" },
+  { key: "hip3", label: "HIP3", icon: Hip3Icon, path: "/hip3" },
+  { key: "stats", label: "Stats", icon: StatsIcon, path: "/stats" },
 ];
 
 function resolveTabFromLocation() {
@@ -139,7 +149,10 @@ export default function App() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const baseUrl = window.location.href;
-    const nextUrl = new URL(activeTab === "app" ? "./app" : "./stats", baseUrl);
+    const activeNav = NAV_ITEMS.find((item) => item.key === activeTab);
+    const fallbackNav = NAV_ITEMS[0];
+    const nextPath = activeNav?.path || fallbackNav.path || "/app";
+    const nextUrl = new URL(`.${nextPath}`, baseUrl);
     const desiredPath = `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
 
     if (`${window.location.pathname}${window.location.search}${window.location.hash}` === desiredPath) {
@@ -203,6 +216,7 @@ export default function App() {
 
   const sidebarWidthClass = isSidebarCollapsed ? "w-20" : "w-64";
   const mainOffsetClass = isSidebarCollapsed ? "ml-20" : "ml-64";
+  const activeNavLabel = NAV_ITEMS.find((item) => item.key === activeTab)?.label || "Dashboard";
 
   return (
     <div className="min-h-screen bg-[#081021] text-blue-50">
@@ -262,14 +276,14 @@ export default function App() {
         <header className="sticky top-0 z-10 border-b border-blue-900 bg-[#081021]/90 backdrop-blur">
           <div className="flex w-full items-center justify-between px-4 py-4 md:px-6">
             <div>
-              <p className="text-xs uppercase tracking-widest text-blue-400/70">{activeTab === "app" ? "Dashboard" : "Insights"}</p>
+              <p className="text-xs uppercase tracking-widest text-blue-400/70">{activeNavLabel}</p>
             </div>
           </div>
         </header>
 
         <main className="flex-1 overflow-y-auto px-4 py-6 md:px-6">
           <div className="w-full space-y-6">
-            {activeTab === "app" ? (
+            {activeTab === "app" && (
               <div className="space-y-6">
                 <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.85fr)]">
                   <StrategyTable data={fundingData} strategy={bestStrategy} />
@@ -283,7 +297,11 @@ export default function App() {
                 </div>
                 <FundingTable data={fundingData} />
               </div>
-            ) : (
+            )}
+
+            {activeTab === "hip3" && <Hip3Table />}
+
+            {activeTab === "stats" && (
               <StatsPage
                 history={history}
                 balanceHistory={subaccountMetrics.balanceHistory}
