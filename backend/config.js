@@ -27,6 +27,8 @@ export const API_KEY = process.env.API_KEY ?? "";
 export const API_SECRET = process.env.API_SECRET ?? "";
 export const SUBACCOUNT = process.env.SUBACCOUNT ?? "";
 export const HYPERLIQUID_BASE_URL = process.env.HYPERLIQUID_BASE_URL ?? "https://api.hyperliquid.xyz";
+export const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? "";
+export const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID ?? "";
 
 export const DEFAULT_REBALANCE_HOURS = Number.parseFloat(
   process.env.REBALANCE_INTERVAL_HOURS ?? "8",

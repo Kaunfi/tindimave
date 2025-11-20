@@ -1,6 +1,7 @@
 import { DEFAULT_LEVERAGE, DEFAULT_QUOTE_TO_DEPLOY, DEFAULT_REBALANCE_HOURS, DEFAULT_SYMBOL } from "../config.js";
 import { HyperliquidClient } from "../hyperliquidClient.js";
 import { calculateHedgeSizes, summarizeExposure } from "../utils/hedgeSizing.js";
+import { buildStrategyMessage, formatNumber, formatUsd, sendTelegramMessage } from "../utils/telegram.js";
 
 const client = new HyperliquidClient();
 
@@ -48,6 +49,18 @@ async function executeLongSpotShortPerp({ symbol, quoteToDeploy, leverage }) {
   await client.placeSpotOrder({ symbol, side: "buy", size: spotSize, price });
   await client.placePerpOrder({ symbol, side: "sell", size: perpSize, price, reduceOnly: false });
 
+  const message = buildStrategyMessage({
+    context: "initial",
+    symbol,
+    leverage,
+    price,
+    targetSpot: spotSize,
+    targetPerp: perpSize,
+    spotAction: `Achat de ${formatNumber(spotSize)} ${symbol} au prix spot ${formatUsd(price)}`,
+    perpAction: `Short perp de ${formatNumber(perpSize)} ${symbol} au même prix de ref`,
+  });
+  await sendTelegramMessage(message);
+
   return { spotSize, perpSize, price };
 }
 
@@ -72,6 +85,35 @@ async function rebalancePositions({ symbol, targetQuote, leverage }) {
   if (Math.abs(perpDiff) > 0) {
     const side = perpDiff > 0 ? "buy" : "sell";
     await client.placePerpOrder({ symbol, side, size: Math.abs(perpDiff), price });
+  }
+
+  if (Math.abs(spotDiff) > 0 || Math.abs(perpDiff) > 0) {
+    let spotAction = null;
+    if (spotDiff > 0) {
+      spotAction = `Achat supplémentaire de ${formatNumber(Math.abs(spotDiff))} ${symbol}`;
+    } else if (spotDiff < 0) {
+      spotAction = `Clôture partielle : vente de ${formatNumber(Math.abs(spotDiff))} ${symbol}`;
+    }
+
+    let perpAction = null;
+    if (perpDiff < 0) {
+      perpAction = `Renforcement du short de ${formatNumber(Math.abs(perpDiff))} ${symbol}`;
+    } else if (perpDiff > 0) {
+      perpAction = `Rachat pour réduire le short de ${formatNumber(Math.abs(perpDiff))} ${symbol}`;
+    }
+
+    const message = buildStrategyMessage({
+      context: "rebalance",
+      symbol,
+      leverage,
+      price,
+      targetSpot,
+      targetPerp,
+      spotAction,
+      perpAction,
+    });
+
+    await sendTelegramMessage(message);
   }
 
   return {
