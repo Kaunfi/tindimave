@@ -8,30 +8,35 @@ const API = "https://api.hyperliquid.xyz/info";
 const FALLBACK_HIP3_ROWS = [
   {
     symbol: "HLP",
-    name: "Hyperliquid LP Token",
-    chain: "Hyperliquid",
-    decimals: 18,
-    description: "Sample HIP3 vault token representing liquidity provision on Hyperliquid.",
+    lastPrice: 1.01,
+    change24h: 0.35,
+    volume24h: 152_000,
+    openInterest: 2_450_000,
   },
   {
     symbol: "USDe",
-    name: "Example Restaked USD",
-    chain: "Ethereum",
-    decimals: 18,
-    description: "Illustrative HIP3 restaked stablecoin used when live data is unavailable.",
+    lastPrice: 0.99,
+    change24h: -0.12,
+    volume24h: 88_500,
+    openInterest: 1_125_000,
   },
   {
     symbol: "stSOL",
-    name: "Example Staked SOL",
-    chain: "Solana",
-    decimals: 9,
-    description: "Placeholder HIP3 asset entry for demonstration purposes.",
+    lastPrice: 188.34,
+    change24h: 1.8,
+    volume24h: 320_000,
+    openInterest: 845_000,
   },
 ];
 
 function parseNumber(value) {
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
+}
+
+function stripXyzPrefix(value) {
+  if (typeof value !== "string") return value;
+  return value.replace(/^xyz[:]?/i, "");
 }
 
 function isHip3Entry(entry) {
@@ -61,8 +66,8 @@ function isHip3Entry(entry) {
   return false;
 }
 
-function normalizeHip3Entry(entry) {
-  const symbol = ensureTokenSymbol(
+function normalizeHip3Entry(entry, ctx) {
+  const rawSymbol = ensureTokenSymbol(
     entry?.symbol,
     entry?.name,
     entry?.ticker,
@@ -73,15 +78,20 @@ function normalizeHip3Entry(entry) {
     entry?.token?.ticker
   );
 
-  const decimals =
-    parseNumber(entry?.decimals ?? entry?.token?.decimals ?? entry?.token?.tokenDecimals) ?? null;
+  const symbol = stripXyzPrefix(rawSymbol);
+  const lastPrice = parseNumber(ctx?.markPx ?? ctx?.midPx ?? ctx?.price ?? ctx?.px);
+  const prevDayPx = parseNumber(ctx?.prevDayPx ?? ctx?.prevDayPrice ?? ctx?.prevDayMid);
+  const change24h =
+    lastPrice != null && prevDayPx != null && prevDayPx !== 0
+      ? ((lastPrice - prevDayPx) / prevDayPx) * 100
+      : null;
 
   return {
     symbol: symbol || "—",
-    name: entry?.name || entry?.token?.name || "—",
-    chain: entry?.chain || entry?.network || entry?.nativeNetwork || entry?.token?.chain || "—",
-    decimals,
-    description: entry?.description || entry?.token?.description || entry?.note || "—",
+    lastPrice,
+    change24h,
+    volume24h: parseNumber(ctx?.dayNtlVlm ?? ctx?.volume ?? ctx?.vol24h ?? ctx?.dayVolume),
+    openInterest: parseNumber(ctx?.openInterest ?? ctx?.openInterestUsd ?? ctx?.oi),
   };
 }
 
@@ -89,7 +99,7 @@ async function fetchHip3Assets() {
   const res = await fetch(API, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ type: "meta", dex: "xyz" }),
+    body: JSON.stringify({ type: "metaAndAssetCtxs", dex: "xyz" }),
   });
 
   if (!res.ok) {
@@ -104,21 +114,28 @@ async function fetchHip3Assets() {
     throw new Error("Invalid JSON from Hyperliquid (hip3).\n" + txt.slice(0, 300));
   }
 
-  const list = Array.isArray(data) ? data : data?.universe || data?.assets || [];
+  const meta = Array.isArray(data?.[0]?.universe)
+    ? data?.[0]?.universe
+    : Array.isArray(data)
+      ? data
+      : data?.universe || [];
+  const contexts = Array.isArray(data?.[1]) ? data?.[1] : Array.isArray(data?.assetCtxs) ? data.assetCtxs : [];
 
-  const xyzEntries = list.filter((entry) => {
+  const combined = meta.map((entry, index) => ({ entry, ctx: contexts[index] || {} }));
+
+  const xyzEntries = combined.filter(({ entry }) => {
     const dex = String(entry?.dex || entry?.dexName || entry?.source || "").toLowerCase();
     if (dex === "xyz") return true;
     const symbols = [entry?.symbol, entry?.name, entry?.ticker, entry?.token?.symbol];
     return symbols.some((value) => typeof value === "string" && value.toLowerCase().startsWith("xyz:"));
   });
 
-  const hip3Entries = xyzEntries.filter(isHip3Entry);
+  const hip3Entries = xyzEntries.filter(({ entry }) => isHip3Entry(entry));
   if (hip3Entries.length === 0) {
     throw new Error("No HIP3 assets found in live response");
   }
 
-  return hip3Entries.map(normalizeHip3Entry);
+  return hip3Entries.map(({ entry, ctx }) => normalizeHip3Entry(entry, ctx));
 }
 
 export default function Hip3Table() {
@@ -156,11 +173,7 @@ export default function Hip3Table() {
     return rows
       .filter((row) => {
         if (!q) return true;
-        return (
-          String(row.symbol || "").toLowerCase().includes(q) ||
-          String(row.name || "").toLowerCase().includes(q) ||
-          String(row.chain || "").toLowerCase().includes(q)
-        );
+        return String(row.symbol || "").toLowerCase().includes(q);
       })
       .sort((a, b) => String(a.symbol || "").localeCompare(String(b.symbol || "")));
   }, [rows, query]);
@@ -183,40 +196,53 @@ export default function Hip3Table() {
         <thead className="bg-[#111a2e]">
           <tr>
             <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-blue-200">Asset</th>
-            <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-blue-200">Name</th>
-            <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-blue-200">Chain</th>
-            <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-blue-200">Decimals</th>
-            <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-blue-200">Description</th>
+            <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-blue-200">Last price</th>
+            <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-blue-200">24h Change</th>
+            <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-blue-200">Volume</th>
+            <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-blue-200">Open Interest</th>
           </tr>
         </thead>
         <tbody>
-          {filtered.map((row) => (
-            <tr key={`${row.symbol}-${row.chain}-${row.name}`} className="border-t border-blue-900 hover:bg-[#15213a]">
-              <td className="px-4 py-3 whitespace-nowrap text-blue-100">
-                <div className="flex items-center gap-2">
-                  <TokenLogo base={row.symbol !== "—" ? row.symbol : undefined} />
-                  {row.symbol !== "—" ? (
-                    <a
-                      className="text-blue-200 hover:text-cyan-300"
-                      href={`https://app.hyperliquid.xyz/spot/${row.symbol}`}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {row.symbol}
-                    </a>
-                  ) : (
-                    <span className="text-blue-200">—</span>
-                  )}
-                </div>
-              </td>
-              <td className="px-4 py-3 whitespace-nowrap text-blue-100">{row.name || "—"}</td>
-              <td className="px-4 py-3 whitespace-nowrap text-blue-100">{row.chain || "—"}</td>
-              <td className="px-4 py-3 whitespace-nowrap text-blue-100">
-                {row.decimals != null ? row.decimals : "—"}
-              </td>
-              <td className="px-4 py-3 text-blue-100">{row.description || "—"}</td>
-            </tr>
-          ))}
+          {filtered.map((row) => {
+            const change = row.change24h;
+            const changeLabel =
+              change != null && Number.isFinite(change) ? `${change >= 0 ? "+" : ""}${change.toFixed(2)}%` : "—";
+            return (
+              <tr key={row.symbol} className="border-t border-blue-900 hover:bg-[#15213a]">
+                <td className="px-4 py-3 whitespace-nowrap text-blue-100">
+                  <div className="flex items-center gap-2">
+                    <TokenLogo base={row.symbol !== "—" ? row.symbol : undefined} />
+                    {row.symbol !== "—" ? (
+                      <a
+                        className="text-blue-200 hover:text-cyan-300"
+                        href={`https://app.hyperliquid.xyz/spot/${row.symbol}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {row.symbol}
+                      </a>
+                    ) : (
+                      <span className="text-blue-200">—</span>
+                    )}
+                  </div>
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap text-blue-100">
+                  {row.lastPrice != null ? row.lastPrice.toLocaleString(undefined, { maximumFractionDigits: 4 }) : "—"}
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap text-blue-100">
+                  <span className={change == null ? "" : change >= 0 ? "text-green-300" : "text-red-300"}>
+                    {changeLabel}
+                  </span>
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap text-blue-100">
+                  {row.volume24h != null ? row.volume24h.toLocaleString() : "—"}
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap text-blue-100">
+                  {row.openInterest != null ? row.openInterest.toLocaleString() : "—"}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </TableShell>
