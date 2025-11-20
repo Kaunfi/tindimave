@@ -45,6 +45,19 @@ function isHip3Entry(entry) {
   );
   if (type === "HIP3") return true;
   if (entry?.hip3 === true || entry?.isHip3 === true) return true;
+  const rawSymbols = [
+    entry?.symbol,
+    entry?.name,
+    entry?.ticker,
+    entry?.pfSym,
+    entry?.pf_sym,
+    entry?.coin,
+    entry?.token?.symbol,
+    entry?.token?.ticker,
+  ];
+  if (rawSymbols.some((value) => typeof value === "string" && value.toLowerCase().startsWith("xyz:"))) {
+    return true;
+  }
   return false;
 }
 
